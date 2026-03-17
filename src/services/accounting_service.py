@@ -3,7 +3,7 @@ from linebot.models import TextSendMessage
 from src.repositories.expense_repository import ExpenseRepository
 from src.services.ai_service import get_ai_response
 from src.services.parser_service import parse_accounting_content
-import flex_templates as flex  
+from src import flex_templates as flex
 
 # 1. 初始化 Repository (Singleton 模式，供內部與外部使用)
 db = ExpenseRepository()

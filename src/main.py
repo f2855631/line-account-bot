@@ -57,13 +57,10 @@ app = FastAPI(lifespan=lifespan)
 # 掛載靜態檔案 (CSS/JS)
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
-# 跨域設定：只允許 LIFF 前端與 Render 網域調用 API
+# 跨域設定：允許 LIFF 前端調用 API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://my-line-accounting-bot.onrender.com",
-        "https://liff.line.me",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,6 +86,11 @@ class AddTargetRequest(BaseModel):
 class DeleteTargetRequest(BaseModel):
     contextId: str
     target_name: str
+
+class RenameTargetRequest(BaseModel):
+    contextId: str
+    old_name: str
+    new_name: str
 
 class AddRecordRequest(BaseModel):
     target_name: str
@@ -257,6 +259,18 @@ async def api_delete_target(req: DeleteTargetRequest):
         print(f"❌ API Error (delete-target): {e}")
         return {"success": False}
 
+@app.post("/api/rename-target")
+async def api_rename_target(req: RenameTargetRequest):
+    if not db: return {"success": False}
+    try:
+        if not req.new_name or not req.new_name.strip():
+            return {"success": False, "message": "新名稱不能為空"}
+        success = db.rename_target(req.contextId, req.old_name, req.new_name.strip())
+        return {"success": success}
+    except Exception as e:
+        print(f"❌ API Error (rename-target): {e}")
+        return {"success": False, "message": str(e)}
+
 # --- 5. LINE 訊息處理 ---
 
 async def process_event_task(reply_token, event_type, payload, user_id, context_id):
@@ -294,11 +308,26 @@ async def callback(request: Request, x_line_signature: str = Header(None)):
         raise HTTPException(status_code=400)
     return "OK"
 
+def _create_task_safe(coro):
+    """
+    安全地在現有事件迴圈中建立 Task。
+    LINE SDK 的 handler 是同步呼叫的，直接用 asyncio.create_task()
+    在某些情況下會拿不到事件迴圈，改用此方式確保穩定。
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(coro)
+        else:
+            loop.run_until_complete(coro)
+    except RuntimeError:
+        asyncio.run(coro)
+
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     context_id = event.source.group_id if event.source.type == 'group' else user_id
-    asyncio.create_task(
+    _create_task_safe(
         process_event_task(event.reply_token, "text", event.message.text.strip(), user_id, context_id)
     )
 
@@ -306,7 +335,7 @@ def handle_message(event):
 def handle_postback(event):
     user_id = event.source.user_id
     context_id = event.source.group_id if event.source.type == 'group' else user_id
-    asyncio.create_task(
+    _create_task_safe(
         process_event_task(event.reply_token, "postback", event.postback.data, user_id, context_id)
     )
 

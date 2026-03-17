@@ -92,6 +92,10 @@ body {
 .name-info { display: flex; flex-direction: column; gap: 2px; }
 .name-text { font-size: 16px; font-weight: 600; }
 .month-total { font-size: 15px; font-weight: 700; color: var(--primary-accent); }
+.edit-btn {
+    color: white; border: none; background: var(--primary-yellow);
+    padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+}
 .del-btn { 
     color: white; border: none; background: var(--danger-red); 
     padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;

@@ -89,7 +89,10 @@ function renderMemberList(members) {
                 <span class="name-text">${m.target_name}</span>
                 <span class="month-total">本月累積 $${Math.round(m.amount || 0)}</span>
             </div>
-            <button class="del-btn" onclick="doDelete('${m.target_name}', event)">刪除</button>
+            <div style="display:flex; gap:8px;">
+                <button class="edit-btn" onclick="doRename('${m.target_name}', event)">改名</button>
+                <button class="del-btn" onclick="doDelete('${m.target_name}', event)">刪除</button>
+            </div>
         </div>
     `).join('') || "<p style='text-align:center; padding:20px; color:#888;'>尚未建立成員</p>";
 }
@@ -303,67 +306,30 @@ function startEditRecord() {
     document.getElementById('page-input').classList.add('active');
 }
 
-async function startDeleteRecord() {
-    if (!selectedRecord) return;
-
-    const label = selectedRecord.item_name === "手機即時記帳"
-        ? `$${Math.round(selectedRecord.amount)}`
-        : `${selectedRecord.item_name}（$${Math.round(selectedRecord.amount)}）`;
-
-    if (!confirm(`確定要刪除這筆紀錄嗎？\n\n成員：${selectedRecord.target_name}\n項目：${label}\n日期：${selectedRecord.expense_date}`)) return;
-
-    const btn = document.querySelector('.btn-delete-record');
-    btn.disabled = true;
-    btn.innerText = "刪除中...";
-
-    try {
-        const res = await fetch('/api/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: selectedRecord.id,
-                contextId: selectedCid
-            })
-        });
-        const result = await res.json();
-
-        if (result.success) {
-            selectedRecord = null;
-            document.getElementById('history-actions-bar').style.display = 'none';
-            await fetchHistory();         // 重新整理抽屜列表
-            await loadMembers(selectedCid); // 更新首頁本月累計金額
-        } else {
-            alert("刪除失敗，請稍後再試");
-        }
-    } catch (e) {
-        alert("刪除失敗，請檢查網路狀態");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "刪除紀錄";
-    }
-}
-
-// --- Parser 核心邏輯 ---
+// --- Parser 核心邏輯（使用 math.js 取代 Function()，避免任意代碼執行）---
 function calculateResult() {
-    if (!formula || formula === "-") return 0; 
+    if (!formula || formula === "-") return 0;
     try {
-        let cleanFormula = formula.replace(/×/g, '*').replace(/÷/g, '/');
+        let cleanFormula = formula
+            .replace(/×/g, '*')
+            .replace(/÷/g, '/');
 
         const lastChar = cleanFormula.slice(-1);
         if (["+", "-", "*", "/"].includes(lastChar)) {
             cleanFormula = cleanFormula.slice(0, -1);
         }
 
-        const res = Function('"use strict";return (' + cleanFormula + ')')();
-        
-        if (isNaN(res) || !isFinite(res)) return 0;
+        // 使用 math.js 安全計算，不會執行任意 JS
+        const res = math.evaluate(cleanFormula);
+
+        if (typeof res !== 'number' || isNaN(res) || !isFinite(res)) return 0;
 
         const rounded = Math.round(res);
-        formula = rounded.toString(); 
-        renderFormula(); 
+        formula = rounded.toString();
+        renderFormula();
         return rounded;
-    } catch (e) { 
-        return 0; 
+    } catch (e) {
+        return 0;
     }
 }
 
@@ -421,15 +387,81 @@ async function doCreate() {
     btn.innerText = "...";
 
     try {
-        await fetch('/api/add-target', {
+        const res = await fetch('/api/add-target', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ contextId: selectedCid, target_name: name })
         });
-        input.value = ""; 
-        await loadMembers(selectedCid);
+        const result = await res.json();
+
+        if (result.success) {
+            input.value = "";
+            await loadMembers(selectedCid);
+            showToast(`「${name}」已成功新增`);
+        } else {
+            showToast("新增失敗，請稍後再試", true);
+        }
+    } catch (e) {
+        showToast("新增失敗，請檢查網路狀態", true);
     } finally {
         btn.disabled = false;
         btn.innerText = "確認";
+    }
+}
+
+// 輕量提示訊息（取代 alert，不阻塞操作）
+function showToast(msg, isError = false) {
+    const existing = document.getElementById('toast-msg');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'toast-msg';
+    toast.innerText = msg;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${isError ? '#CC6666' : '#88C170'};
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        opacity: 1;
+        transition: opacity 0.4s ease;
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 400);
+    }, 2000);
+}
+
+async function doRename(oldName, event) {
+    event.stopPropagation();
+    const newName = prompt(`請輸入「${oldName}」的新名稱：`, oldName);
+    if (!newName || !newName.trim()) return;
+    if (newName.trim() === oldName) return;
+
+    try {
+        const res = await fetch('/api/rename-target', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contextId: selectedCid, old_name: oldName, new_name: newName.trim() })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            localStorage.removeItem(`members_${selectedCid}`);
+            await loadMembers(selectedCid);
+            showToast(`已將「${oldName}」改名為「${newName.trim()}」`);
+        } else {
+            showToast("改名失敗，請稍後再試", true);
+        }
+    } catch (e) {
+        showToast("改名失敗，請檢查網路狀態", true);
     }
 }
 
@@ -440,5 +472,7 @@ async function doDelete(name, event) {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ contextId: selectedCid, target_name: name })
     });
+    // 刪除後同步清除 localStorage 快取，避免重整頁面時閃現舊資料
+    localStorage.removeItem(`members_${selectedCid}`);
     await loadMembers(selectedCid);
 }

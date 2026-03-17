@@ -100,6 +100,11 @@ class ExpenseRepository:
         sql = "DELETE FROM defaultdb.expenses WHERE line_user_id = %s AND target_name = %s"
         return self.db.execute_query(sql, (line_user_id, target_name))
 
+    def rename_target(self, line_user_id, old_name, new_name):
+        """重新命名成員：將所有該成員的紀錄 target_name 更新為新名稱"""
+        sql = "UPDATE defaultdb.expenses SET target_name = %s WHERE line_user_id = %s AND target_name = %s"
+        return self.db.execute_query(sql, (new_name, line_user_id, old_name))
+
     def add_target_member(self, line_user_id, target_name):
         """新增成員 (初始化 0 元紀錄，用於讓該成員出現在清單中)"""
         try:
