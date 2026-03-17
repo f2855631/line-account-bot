@@ -57,10 +57,13 @@ app = FastAPI(lifespan=lifespan)
 # 掛載靜態檔案 (CSS/JS)
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
-# 跨域設定：允許 LIFF 前端調用 API
+# 跨域設定：只允許 LIFF 前端與 Render 網域調用 API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://my-line-accounting-bot.onrender.com",
+        "https://liff.line.me",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
