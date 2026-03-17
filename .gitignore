@@ -2,3 +2,5 @@
 .venv/
 __pycache__/
 *.pyc
+src/settings/ca.pem
+*.pem
