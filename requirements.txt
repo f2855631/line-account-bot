@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+line-bot-sdk>=1.20.0
+google-genai
+jinja2
+python-multipart
+pymysql           
+cryptography      
+gunicorn

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>149 記帳管家</title>
+    
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="page-list">
+        <div class="ad-container" id="ad-banner">
+            <span style="color:#ccc; font-size:12px;">贊助廣告</span>
+        </div>
+        
+        <div class="sticky-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div class="header" style="margin-bottom: 0;">帳務總覽</div>
+                <span class="history-btn" onclick="openGlobalHistory()">全體歷史明細</span>
+            </div>
+            <div class="create-group">
+                <input type="text" id="new-target-input" placeholder="新增成員名稱">
+                <button class="btn-add" onclick="doCreate()">確認</button>
+            </div>
+        </div>
+
+        <div id="list-scroll-area">
+            <div id="nameListContainer">
+                <p style="text-align: center; color: var(--text-light); margin-top: 50px;">載入中...</p>
+            </div>
+        </div>
+
+        <div class="ad-footer">
+            <a href='https://greenmall.info/3QAHT?openExternalBrowser=1' target='_blank' class="ad-link">
+                <img src='https://img.oeya.com/images/202107/1626774903634400507.png' alt="廣告"/>
+            </a>
+        </div>
+    </div>
+
+    <div id="page-input" style="display: none;">
+        <div class="top-info">
+            <div class="top-nav">
+                <span class="back-btn" onclick="hideInputPage()">取消</span>
+                <span class="history-btn" onclick="toggleHistory()">歷史明細查詢</span>
+            </div>
+            <p id="target-title">正在記帳</p>
+            <div id="amount-display">0</div>
+            <input type="text" id="note-input" placeholder="輸入備註內容">
+        </div>
+
+        <div class="middle-controls">
+            <div class="quick-notes">
+                <div class="q-btn" onclick="setNote('早餐')">早餐</div>
+                <div class="q-btn" onclick="setNote('午餐')">午餐</div>
+                <div class="q-btn" onclick="setNote('晚餐')">晚餐</div>
+                <div class="q-btn" onclick="setNote('飲料')">飲料</div>
+                <div class="q-btn" onclick="setNote('交通')">交通</div>
+                <div class="q-btn" onclick="setNote('生活用品')">生活用品</div>
+                <div class="q-btn" onclick="setNote('房租')">房租</div>
+            </div>
+            <div class="calendar-strip">
+                <div class="app-date-selector" id="date-picker-trigger" data-wrap="true">
+                    <span id="date-display" data-toggle>載入日期...</span>
+                    <input type="text" id="date-input" data-input style="display: none;">
+                </div>
+            </div>
+        </div>
+
+        <div class="keypad-container">
+            <div class="keypad">
+                <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button><button class="op" onclick="clearFormula()">C</button>
+                <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button><button class="op" onclick="press('/')">÷</button>
+                <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button><button class="op" onclick="press('*')">×</button>
+                <button onclick="press('0')">0</button><button onclick="press('00')">00</button><button onclick="press('.')">.</button><button class="op" onclick="press('-')">−</button>
+                <button class="back-key" onclick="backspace()">🔙</button>
+                <button class="eq-btn" style="grid-column: span 2;" onclick="calculateResult()">＝</button>
+                <button class="op" onclick="press('+')">+</button>
+            </div>
+        </div>
+
+        <div class="send-area">
+            <button class="btn-confirm" id="btn-submit-record" onclick="doSend()">完成送出</button>
+        </div>
+
+        <div id="history-drawer">
+            <div class="drawer-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span id="history-title-name" style="font-weight: 600;">歷史紀錄</span>
+                    <select id="month-selector" onchange="fetchHistory()">
+                        <option value="">全部</option>
+                        <option value="01">1月</option><option value="02">2月</option>
+                        <option value="03">3月</option><option value="04">4月</option>
+                        <option value="05">5月</option><option value="06">6月</option>
+                        <option value="07">7月</option><option value="08">8月</option>
+                        <option value="09">9月</option><option value="10">10月</option>
+                        <option value="11">11月</option><option value="12">12月</option>
+                    </select>
+                </div>
+                <span onclick="closeHistoryDrawer()" style="color: var(--primary-accent); cursor:pointer;">關閉</span>
+            </div>
+            <div id="history-list-content">載入中...</div>
+            
+            <div class="history-actions" id="history-actions-bar">
+                <button class="btn-edit-record" onclick="startEditRecord()">編輯紀錄</button>
+                <button class="btn-delete-record" onclick="startDeleteRecord()">刪除紀錄</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+    <script>
+        /**
+         * 改良後的初始化函式
+         * 偵測 URL 參數並自動導向歷史頁面
+         */
+        async function startApp(liffId) {
+            try {
+                await liff.init({ liffId: liffId });
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                // 取得 URL 參數
+                const urlParams = new URLSearchParams(window.location.search);
+                const action = urlParams.get('action');
+                
+                // 執行原本的數據初始化
+                await init(liffId);
+
+                // 自動跳轉歷史明細 (簡化呼叫)
+                if (action === 'history') {
+                    console.log("偵測到 action=history，準備切換至歷史明細...");
+                    if (typeof openGlobalHistory === 'function') {
+                        openGlobalHistory();
+                    }
+                }
+            } catch (err) {
+                console.error("LIFF Init Error:", err);
+            }
+        }
+
+        // 執行啟動
+        startApp("{{ LIFF_ID }}");
+    </script>
+</body>
+</html>

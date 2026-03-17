@@ -1,0 +1,200 @@
+:root { 
+    --primary-accent: #88C170;   /* 抹茶綠 */
+    --primary-yellow: #FFBD59;   /* 奶油黃 */
+    --bg-light: #F8F7F2;          /* 暖白紙質感 */
+    --secondary-gray: #E8E7E3;   /* 淺灰底 */
+    --text-main: #4A4A4A;        /* 深灰文字 */
+    --text-light: #8E8E8E;       /* 次要灰 */
+    --card-white: #FFFFFF;
+    --danger-red: #CC6666;
+}
+
+body { 
+    margin: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; 
+    background: var(--bg-light); height: 100vh; color: var(--text-main); overflow: hidden; 
+}
+
+/* --- 1. 列表頁面佈局修正 --- */
+#page-list { 
+    display: flex; 
+    flex-direction: column; 
+    height: 100vh; 
+    width: 100%;
+}
+
+#list-scroll-area { 
+    flex: 1; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
+}
+
+/* 頂部廣告 */
+.ad-container {
+    width: 100%; background: #fff; border-bottom: 1px solid var(--secondary-gray);
+    min-height: 50px; display: flex; justify-content: center; align-items: center;
+}
+
+/* 底部廣告：關鍵修正點 (使用 fixed 鎖死在底部) */
+.ad-footer {
+    background: white; 
+    border-top: 1px solid var(--secondary-gray);
+    width: 100%; 
+    height: 90px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    overflow: hidden; 
+    
+    position: fixed; /* 固定定位，不隨內容流動 */
+    bottom: 0;
+    left: 0;
+    z-index: 50; /* 確保在列表之上，但在輸入頁面之下 */
+    
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.ad-link { display: flex; justify-content: center; align-items: center; width: 95%; height: 85%; text-decoration: none; }
+.ad-link img { 
+    width: 100% !important; height: 100% !important; 
+    object-fit: contain !important; display: block; border-radius: 6px;
+}
+
+/* 列表頂部導航 */
+.sticky-header {
+    position: sticky; top: 0; background: rgba(255, 255, 255, 0.9); 
+    backdrop-filter: blur(10px); padding: 20px; z-index: 10; 
+    border-bottom: 1px solid var(--secondary-gray);
+}
+
+.header { font-size: 18px; font-weight: 600; margin-bottom: 15px; }
+.create-group { display: flex; gap: 10px; }
+#new-target-input { 
+    flex: 1; padding: 10px 15px; border: 1.5px solid var(--secondary-gray); border-radius: 8px; font-size: 15px; outline: none;
+}
+
+.btn-add { 
+    background: var(--primary-accent); color: white; border: none; 
+    padding: 0 30px; border-radius: 8px; font-weight: 600; font-size: 16px;
+}
+
+/* 內容區塊內距修正：預留空間給 fixed 廣告，避免遮擋最後一個成員 */
+#nameListContainer { 
+    padding: 15px; 
+    padding-bottom: 110px; /* 90px 廣告高度 + 20px 緩衝 */
+}
+
+.name-card { 
+    background: var(--card-white); padding: 18px; border-radius: 12px; margin-bottom: 12px; 
+    display: flex; justify-content: space-between; align-items: center;
+    border: 1px solid var(--secondary-gray);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.name-info { display: flex; flex-direction: column; gap: 2px; }
+.name-text { font-size: 16px; font-weight: 600; }
+.month-total { font-size: 15px; font-weight: 700; color: var(--primary-accent); }
+.del-btn { 
+    color: white; border: none; background: var(--danger-red); 
+    padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+}
+
+/* --- 2. 輸入與歷史明細頁面 --- */
+#page-input { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: var(--bg-light); z-index: 100;
+    display: none; 
+    flex-direction: column;
+}
+
+#page-input.active { 
+    display: flex !important;
+    animation: slideIn 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.top-info { padding: 30px 20px 10px 20px; background: white; border-bottom: 1px solid var(--secondary-gray); }
+.top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.back-btn { font-size: 15px; color: var(--text-light); cursor: pointer; padding: 5px; }
+.history-btn { font-size: 12px; color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 4px 12px; border-radius: 20px; cursor: pointer; }
+
+#target-title { font-size: 13px; color: var(--text-light); margin: 0 0 5px 0; }
+#amount-display { 
+    font-size: 30px; font-weight: 600; text-align: right; color: var(--text-main); 
+    overflow-x: auto; white-space: nowrap; margin-bottom: 8px; min-height: 40px;
+}
+#note-input { 
+    width: 100%; box-sizing: border-box; background: var(--bg-light); border: none; border-radius: 8px;
+    color: var(--text-main); font-size: 15px; padding: 10px 12px; outline: none;
+}
+
+.middle-controls { background: white; padding-bottom: 10px; }
+.quick-notes { display: flex; gap: 8px; overflow-x: auto; padding: 5px 20px 10px 20px; -webkit-overflow-scrolling: touch; }
+.quick-notes::-webkit-scrollbar { display: none; }
+
+.q-btn { 
+    background: var(--bg-light); color: var(--text-main); border: 1px solid var(--secondary-gray); 
+    padding: 6px 14px; border-radius: 6px; font-size: 12px; flex-shrink: 0;
+}
+
+.calendar-strip { padding: 0 20px; display: flex; justify-content: center; }
+.app-date-selector { 
+    background: var(--primary-yellow); padding: 10px 40px; border-radius: 25px; min-width: 60%; 
+    display: inline-flex; justify-content: center; align-items: center; gap: 10px; cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+#date-display { font-size: 14px; color: white; font-weight: 500; }
+
+.keypad-container { flex: 1; display: flex; flex-direction: column; background: white; margin-bottom: 10px; }
+.keypad { display: grid; grid-template-columns: repeat(4, 1fr); flex: 1; border-top: 1px solid var(--secondary-gray); }
+.keypad button { background: white; color: var(--text-main); border: 0.5px solid var(--secondary-gray); font-size: 24px; font-weight: 300; height: 100%; outline: none; }
+.keypad button:active { background: #f9f9f9; }
+.keypad .op { background: var(--bg-light); color: var(--primary-accent); font-weight: 500; }
+.keypad .eq-btn { background: var(--primary-accent) !important; color: white !important; font-weight: 600; }
+.keypad .back-key { background: var(--bg-light); color: var(--danger-red); }
+
+.send-area { padding: 10px 20px 40px 20px; background: white; }
+.btn-confirm { width: 100%; padding: 15px; background: var(--primary-accent); color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; }
+
+/* --- 3. 歷史紀錄抽屜 --- */
+#history-drawer {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: var(--bg-light); transform: translateY(100%); transition: 0.4s ease-out; z-index: 110; display: flex; flex-direction: column;
+}
+#history-drawer.open { transform: translateY(0); }
+
+.drawer-header { 
+    padding: 20px; display: flex; justify-content: space-between; align-items: center; 
+    border-bottom: 1px solid var(--secondary-gray); 
+    margin-top: env(safe-area-inset-top, 20px); background: white;
+}
+#history-list-content { flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch; }
+
+.history-item { 
+    background: var(--card-white); border-radius: 12px; padding: 16px; margin-bottom: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    border: 1.5px solid transparent; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.03); cursor: pointer;
+}
+.history-item.selected { background: #F0F7ED; border-color: var(--primary-accent); }
+.history-item-left { display: flex; flex-direction: column; gap: 6px; }
+
+.history-actions {
+    padding: 20px; display: none; gap: 15px;
+    border-top: 1px solid var(--secondary-gray); background: white;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
+}
+.btn-edit-record { flex: 1; padding: 16px; background: var(--primary-yellow); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 17px; }
+.btn-delete-record { flex: 1; padding: 16px; background: var(--danger-red); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 17px; }
+
+#month-selector { border: 1px solid var(--secondary-gray); border-radius: 6px; padding: 4px 8px; font-size: 13px; background: white;}
+
+/* --- 4. Flatpickr 修正 --- */
+.flatpickr-calendar {
+    position: fixed !important; left: 50% !important; top: 50% !important;
+    transform: translate(-50%, -50%) !important; margin: 0 !important;
+    z-index: 99999 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+}
+.flatpickr-calendar.arrowTop:before, .flatpickr-calendar.arrowTop:after,
+.flatpickr-calendar.arrowBottom:before, .flatpickr-calendar.arrowBottom:after { display: none !important; }
