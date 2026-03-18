@@ -5,11 +5,13 @@ let datePicker = null;
 let currentEditId = null; 
 let selectedRecord = null; 
 
+// 1. 格式化日期顯示
 function formatFullDate(date) {
     const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${days[date.getDay()]}`;
 }
 
+// ✅ 安全地將 Date 物件轉為 YYYY-MM-DD
 function getLocalDateString(date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -17,12 +19,18 @@ function getLocalDateString(date) {
     return `${y}-${m}-${d}`;
 }
 
+// 2. 初始化 LIFF 與套件
 async function init(liffId) {
     selectedCid = localStorage.getItem('last_book_id') || "";
     document.getElementById("date-display").innerText = formatFullDate(new Date());
     
+    // 初始化日期選擇器 (加入 static: true 確保置中佈局不受干擾)
     datePicker = flatpickr("#date-picker-trigger", {
-        wrap: true, static: true, locale: "zh_tw", defaultDate: "today", disableMobile: "true",
+        wrap: true,
+        static: true, // 💡 確保在 flex 容器中正確置中
+        locale: "zh_tw", 
+        defaultDate: "today", 
+        disableMobile: "true",
         onChange: (selectedDates) => { 
             if(selectedDates.length) {
                 document.getElementById("date-display").innerText = formatFullDate(selectedDates[0]);
@@ -31,16 +39,26 @@ async function init(liffId) {
     });
     
     try {
-        if (!liff.id) await liff.init({ liffId: liffId });
-        if (!liff.isLoggedIn()) { liff.login(); return; }
+        if (!liff.id) {
+            await liff.init({ liffId: liffId });
+        }
+        
+        if (!liff.isLoggedIn()) { 
+            liff.login(); 
+            return; 
+        }
         
         const urlParams = new URLSearchParams(window.location.search);
         const context = liff.getContext();
+        
         selectedCid = urlParams.get('bookId') || (context ? (context.groupId || context.userId) : selectedCid);
         
         if (selectedCid) {
             localStorage.setItem('last_book_id', selectedCid);
-            await loadMembers(selectedCid);
+            // 歷史模式：跳過成員頁載入，避免閃爍
+            if (urlParams.get('action') !== 'history') {
+                await loadMembers(selectedCid);
+            }
         }
 
         initMonthSelector();
@@ -50,6 +68,7 @@ async function init(liffId) {
     }
 }
 
+// 3. 讀取與渲染成員清單
 async function loadMembers(cid) {
     const container = document.getElementById('nameListContainer');
     const cached = localStorage.getItem(`members_${cid}`);
@@ -66,53 +85,27 @@ async function loadMembers(cid) {
     }
 }
 
-const AVATAR_COLORS = ['#88C170','#FFBD59','#CC8899','#7BA7CC','#C17088','#88A4C1','#B8CC70','#CC7059'];
-function getAvatarColor(name) {
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-function toggleCardActions(cardId) {
-    const actions = document.getElementById(cardId);
-    if (!actions) return;
-    document.querySelectorAll('.name-card-actions.open').forEach(el => {
-        if (el.id !== cardId) el.classList.remove('open');
-    });
-    actions.classList.toggle('open');
-}
-
 function renderMemberList(members) {
     const container = document.getElementById('nameListContainer');
-    container.innerHTML = members.map((m, idx) => {
-        const color = getAvatarColor(m.target_name);
-        const firstChar = m.target_name.charAt(0);
-        const cardId = `card-actions-${idx}`;
-        return `
-        <div class="name-card">
-            <div class="name-card-main" onclick="showInputPage('${m.target_name}')">
-                <div class="member-avatar" style="background:${color};">${firstChar}</div>
-                <div class="name-info">
-                    <span class="name-text">${m.target_name}</span>
-                    <span class="month-total">本月累積 $${Math.round(m.amount || 0)}</span>
-                </div>
-                <button class="record-btn" onclick="event.stopPropagation(); showInputPage('${m.target_name}')">記帳</button>
-                <button class="more-btn" onclick="event.stopPropagation(); toggleCardActions('${cardId}')">⋯</button>
+    container.innerHTML = members.map(m => `
+        <div class="name-card" onclick="showInputPage('${m.target_name}')">
+            <div class="name-info">
+                <span class="name-text">${m.target_name}</span>
+                <span class="month-total">本月累積 $${Math.round(m.amount || 0)}</span>
             </div>
-            <div class="name-card-actions" id="${cardId}">
-                <button class="action-btn-rename" onclick="doRename('${m.target_name}', event)">改名</button>
-                <button class="action-btn-delete" onclick="doDelete('${m.target_name}', event)">刪除</button>
-            </div>
-        </div>`;
-    }).join('') || "<p style='text-align:center; padding:20px; color:#888;'>尚未建立成員</p>";
+            <button class="del-btn" onclick="doDelete('${m.target_name}', event)">刪除</button>
+        </div>
+    `).join('') || "<p style='text-align:center; padding:20px; color:#888;'>尚未建立成員</p>";
 }
 
+// 4. 記帳頁面顯示
 function showInputPage(name) {
     selectedTarget = name; formula = ""; currentEditId = null;
     document.getElementById('target-title').innerText = `正在為 ${name} 記帳`;
     document.getElementById('amount-display').innerText = "0";
     document.getElementById('note-input').value = "";
     
+    // 重置按鈕狀態
     const submitBtn = document.getElementById('btn-submit-record');
     submitBtn.innerText = "完成送出";
     submitBtn.style.background = "var(--primary-accent)";
@@ -126,15 +119,17 @@ function showInputPage(name) {
     const inputPage = document.getElementById('page-input');
     inputPage.style.display = 'flex'; 
     inputPage.classList.add('active');
+    
     window.scrollTo(0, 0);
 }
 
+// 5. 執行送出 (加入防連點機制)
 async function doSend() {
     let amount = calculateResult();
-    if (amount === 0 && formula !== "0") { showToast("請輸入有效金額", true); return; }
+    if (amount === 0 && formula !== "0") return alert("請輸入有效金額"); 
     
     const submitBtn = document.getElementById('btn-submit-record');
-    submitBtn.disabled = true;
+    submitBtn.disabled = true; // 鎖定按鈕防止連點
     submitBtn.innerText = "處理中...";
 
     const note = document.getElementById('note-input').value.trim();
@@ -142,16 +137,24 @@ async function doSend() {
     
     try {
         if (currentEditId) {
+            const dateStr = getLocalDateString(selectedDate);
+            const payload = {
+                id: currentEditId,
+                contextId: selectedCid,
+                amount: amount,
+                item: note || "手機即時記帳",
+                date: dateStr
+            };
+
             const res = await fetch('/api/update', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    id: currentEditId, contextId: selectedCid, amount: amount,
-                    item: note || "手機即時記帳", date: getLocalDateString(selectedDate)
-                })
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
             });
             const result = await res.json();
+            
             if (result.success) {
-                showToast("更新成功");
+                alert("更新成功");
                 hideInputPage();
                 loadMembers(selectedCid);
             }
@@ -165,6 +168,7 @@ async function doSend() {
                 const triggerText = note 
                     ? `${datePrefix} ${selectedTarget} ${amount} ${note}` 
                     : `${datePrefix} ${selectedTarget} ${amount}`;
+                
                 await liff.sendMessages([{ type: 'text', text: triggerText }]);
                 liff.closeWindow(); 
             } else {
@@ -173,63 +177,57 @@ async function doSend() {
             }
         }
     } catch (e) { 
-        showToast("送出失敗，請檢查網路狀態", true);
+        alert("送出失敗，請檢查網路狀態"); 
     } finally {
+        // 無論成功失敗，最後都要解鎖按鈕
         submitBtn.disabled = false;
         submitBtn.innerText = currentEditId ? "更新紀錄" : "完成送出";
     }
 }
 
+// --- 歷史紀錄動線邏輯優化 ---
+
+// 💡 從首頁直接打開全體歷史
 function openGlobalHistory() {
-    selectedTarget = "";
+    selectedTarget = ""; // 全體查詢
+    
     document.getElementById('page-list').style.display = 'none';
-    document.getElementById('page-input').style.display = 'flex'; 
-    document.getElementById('history-drawer').classList.add('open');
+    const inputPage = document.getElementById('page-input');
+    inputPage.style.display = 'flex'; 
+    
+    const drawer = document.getElementById('history-drawer');
+    drawer.classList.add('open');
+    
     document.getElementById('history-title-name').innerText = "全體歷史紀錄";
     fetchHistory();
 }
 
+// 💡 計算機內切換歷史
 function toggleHistory() { 
     const drawer = document.getElementById('history-drawer');
     const isOpening = !drawer.classList.contains('open');
+    
     if (isOpening) {
         drawer.classList.add('open');
-        document.getElementById('history-title-name').innerText = selectedTarget ? `${selectedTarget} 的紀錄` : "全體歷史紀錄";
+        const titleText = selectedTarget ? `${selectedTarget} 的紀錄` : "全體歷史紀錄";
+        document.getElementById('history-title-name').innerText = titleText;
         fetchHistory();
     } else {
         closeHistoryDrawer();
     }
 }
 
+// 💡 智慧判斷關閉動線
 function closeHistoryDrawer() {
-    document.getElementById('history-drawer').classList.remove('open');
+    const drawer = document.getElementById('history-drawer');
+    drawer.classList.remove('open');
+    
+    // 如果沒有 selectedTarget，代表是從「首頁」進來的，延遲後切換回首頁
     if (!selectedTarget) {
-        setTimeout(() => { hideInputPage(); }, 300);
+        setTimeout(() => {
+            hideInputPage();
+        }, 300);
     }
-}
-
-function initMonthSelector() {
-    const selector = document.getElementById('month-selector');
-    if (!selector) return;
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-
-    selector.innerHTML = '<option value="">全部</option>';
-
-    for (let i = 0; i < 24; i++) {
-        let y = currentYear;
-        let m = currentMonth - i;
-        while (m <= 0) { m += 12; y -= 1; }
-        const monthStr = String(m).padStart(2, '0');
-        const option = document.createElement('option');
-        option.value = `${y}-${monthStr}`;
-        option.textContent = `${y}年 ${m}月`;
-        selector.appendChild(option);
-    }
-
-    selector.value = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 }
 
 async function fetchHistory() {
@@ -241,7 +239,12 @@ async function fetchHistory() {
     content.innerHTML = "<p style='text-align:center; padding:20px;'>讀取中...</p>";
 
     try {
-        const query = new URLSearchParams({ contextId: selectedCid, target: selectedTarget || "", month: month });
+        const query = new URLSearchParams({
+            contextId: selectedCid,
+            target: selectedTarget || "", 
+            month: month 
+        });
+
         const res = await fetch(`/api/get-history?${query.toString()}`);
         const data = await res.json();
         
@@ -304,78 +307,66 @@ function startEditRecord() {
     document.getElementById('page-input').classList.add('active');
 }
 
-async function startDeleteRecord() {
-    if (!selectedRecord) return;
-
-    const label = selectedRecord.item_name === "手機即時記帳"
-        ? `$${Math.round(selectedRecord.amount)}`
-        : `${selectedRecord.item_name}（$${Math.round(selectedRecord.amount)}）`;
-
-    const confirmed = await showConfirm(`確定要刪除這筆紀錄？\n成員：${selectedRecord.target_name}\n項目：${label}\n日期：${selectedRecord.expense_date}`);
-    if (!confirmed) return;
-
-    const btn = document.querySelector('.btn-delete-record');
-    btn.disabled = true;
-    btn.innerText = "刪除中...";
-
-    try {
-        const res = await fetch('/api/delete', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: selectedRecord.id, contextId: selectedCid })
-        });
-        const result = await res.json();
-
-        if (result.success) {
-            selectedRecord = null;
-            document.getElementById('history-actions-bar').style.display = 'none';
-            await fetchHistory();
-            await loadMembers(selectedCid);
-            showToast("紀錄已刪除");
-        } else {
-            showToast("刪除失敗，請稍後再試", true);
-        }
-    } catch (e) {
-        showToast("刪除失敗，請檢查網路狀態", true);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "刪除紀錄";
-    }
-}
-
+// --- Parser 核心邏輯（使用 math.js 取代 Function()，避免任意代碼執行）---
 function calculateResult() {
     if (!formula || formula === "-") return 0;
     try {
-        let cleanFormula = formula.replace(/×/g, '*').replace(/÷/g, '/');
+        let cleanFormula = formula
+            .replace(/×/g, '*')
+            .replace(/÷/g, '/');
+
         const lastChar = cleanFormula.slice(-1);
-        if (["+", "-", "*", "/"].includes(lastChar)) cleanFormula = cleanFormula.slice(0, -1);
+        if (["+", "-", "*", "/"].includes(lastChar)) {
+            cleanFormula = cleanFormula.slice(0, -1);
+        }
+
+        // 使用 math.js 安全計算，不會執行任意 JS
         const res = math.evaluate(cleanFormula);
+
         if (typeof res !== 'number' || isNaN(res) || !isFinite(res)) return 0;
+
         const rounded = Math.round(res);
         formula = rounded.toString();
         renderFormula();
         return rounded;
-    } catch (e) { return 0; }
+    } catch (e) {
+        return 0;
+    }
 }
 
 function press(v) {
     if (formula === "" && (v === "0" || v === "00")) return;
-    if (formula === "" && v === "-") { formula = "-"; renderFormula(); return; }
+    
+    if (formula === "" && v === "-") {
+        formula = "-";
+        renderFormula();
+        return;
+    }
+
     const lastChar = formula.slice(-1);
     const ops = ["+", "-", "*", "/", "×", "÷", "."];
+    
     if (ops.includes(lastChar) && ops.includes(v)) {
         formula = formula.slice(0, -1) + v;
     } else {
         formula += v;
     }
+    
     renderFormula();
 }
 
 function hideInputPage() { 
     document.getElementById('page-input').style.display = 'none';
     document.getElementById('page-input').classList.remove('active'); 
-    document.getElementById('page-list').style.display = 'flex'; 
+    
+    const listPage = document.getElementById('page-list');
+    listPage.style.display = 'flex'; 
+    
     window.scrollTo(0, 0); 
-    selectedTarget = ""; formula = ""; currentEditId = null;
+    
+    selectedTarget = "";
+    formula = "";
+    currentEditId = null;
     renderFormula();
 }
 
@@ -402,6 +393,7 @@ async function doCreate() {
             body: JSON.stringify({ contextId: selectedCid, target_name: name })
         });
         const result = await res.json();
+
         if (result.success) {
             input.value = "";
             await loadMembers(selectedCid);
@@ -417,119 +409,46 @@ async function doCreate() {
     }
 }
 
-function showConfirm(message) {
-    return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99998;display:flex;justify-content:center;align-items:center;';
-        const box = document.createElement('div');
-        box.style.cssText = 'background:white;border-radius:16px;padding:24px;width:80%;max-width:320px;box-shadow:0 10px 30px rgba(0,0,0,0.2);';
-        const msgDiv = document.createElement('div');
-        msgDiv.style.cssText = 'font-size:15px;line-height:1.8;color:#4A4A4A;margin-bottom:16px;';
-        message.split('\n').forEach(line => {
-            const d = document.createElement('div');
-            d.innerText = line;
-            msgDiv.appendChild(d);
-        });
-        const btnRow = document.createElement('div');
-        btnRow.style.cssText = 'display:flex;gap:10px;margin-top:16px;';
-        const cancelBtn = document.createElement('button');
-        cancelBtn.innerText = '取消';
-        cancelBtn.style.cssText = 'flex:1;padding:12px;border:1.5px solid #E8E7E3;border-radius:10px;background:white;color:#8E8E8E;font-size:15px;font-weight:600;';
-        const confirmBtn = document.createElement('button');
-        confirmBtn.innerText = '確定';
-        confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;background:#CC6666;color:white;font-size:15px;font-weight:600;';
-        btnRow.appendChild(cancelBtn);
-        btnRow.appendChild(confirmBtn);
-        box.appendChild(msgDiv);
-        box.appendChild(btnRow);
-        overlay.appendChild(box);
-        document.body.appendChild(overlay);
-        confirmBtn.onclick = () => { overlay.remove(); resolve(true); };
-        cancelBtn.onclick = () => { overlay.remove(); resolve(false); };
-        overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
-    });
-}
-
-function showDialog(title, defaultValue = "") {
-    return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99998;display:flex;justify-content:center;align-items:center;';
-        const box = document.createElement('div');
-        box.style.cssText = 'background:white;border-radius:16px;padding:24px;width:80%;max-width:320px;box-shadow:0 10px 30px rgba(0,0,0,0.2);';
-        const titleDiv = document.createElement('div');
-        titleDiv.innerText = title;
-        titleDiv.style.cssText = 'font-size:16px;font-weight:600;color:#4A4A4A;margin-bottom:16px;text-align:center;';
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = defaultValue;
-        input.style.cssText = 'width:100%;box-sizing:border-box;border:1.5px solid #E8E7E3;border-radius:8px;padding:10px 12px;font-size:15px;outline:none;color:#4A4A4A;margin-bottom:16px;';
-        const btnRow = document.createElement('div');
-        btnRow.style.cssText = 'display:flex;gap:10px;';
-        const cancelBtn = document.createElement('button');
-        cancelBtn.innerText = '取消';
-        cancelBtn.style.cssText = 'flex:1;padding:12px;border:1.5px solid #E8E7E3;border-radius:10px;background:white;color:#8E8E8E;font-size:15px;font-weight:600;';
-        const confirmBtn = document.createElement('button');
-        confirmBtn.innerText = '確認';
-        confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;background:#88C170;color:white;font-size:15px;font-weight:600;';
-        btnRow.appendChild(cancelBtn);
-        btnRow.appendChild(confirmBtn);
-        box.appendChild(titleDiv);
-        box.appendChild(input);
-        box.appendChild(btnRow);
-        overlay.appendChild(box);
-        document.body.appendChild(overlay);
-        setTimeout(() => { input.focus(); }, 100);
-        confirmBtn.onclick = () => { const val = input.value.trim(); overlay.remove(); resolve(val || null); };
-        cancelBtn.onclick = () => { overlay.remove(); resolve(null); };
-        overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(null); } };
-        input.onkeydown = (e) => { if (e.key === 'Enter') { const val = input.value.trim(); overlay.remove(); resolve(val || null); } };
-    });
-}
-
+// 輕量提示訊息（取代 alert，不阻塞操作）
 function showToast(msg, isError = false) {
     const existing = document.getElementById('toast-msg');
     if (existing) existing.remove();
+
     const toast = document.createElement('div');
     toast.id = 'toast-msg';
     toast.innerText = msg;
-    toast.style.cssText = `position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:${isError ? '#CC6666' : '#88C170'};color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);opacity:1;transition:opacity 0.4s ease;`;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${isError ? '#CC6666' : '#88C170'};
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        opacity: 1;
+        transition: opacity 0.4s ease;
+    `;
     document.body.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2000);
-}
 
-async function doRename(oldName, event) {
-    event.stopPropagation();
-    event.preventDefault();
-    const newName = await showDialog(`請輸入「${oldName}」的新名稱`, oldName);
-    if (!newName || !newName.trim()) return;
-    if (newName.trim() === oldName) return;
-
-    try {
-        const res = await fetch('/api/rename-target', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contextId: selectedCid, old_name: oldName, new_name: newName.trim() })
-        });
-        const result = await res.json();
-        if (result.success) {
-            localStorage.removeItem(`members_${selectedCid}`);
-            await loadMembers(selectedCid);
-            showToast(`已將「${oldName}」改名為「${newName.trim()}」`);
-        } else {
-            showToast("改名失敗，請稍後再試", true);
-        }
-    } catch (e) {
-        showToast("改名失敗，請檢查網路狀態", true);
-    }
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 400);
+    }, 2000);
 }
 
 async function doDelete(name, event) {
     event.stopPropagation();
-    const confirmed = await showConfirm(`確定要刪除「${name}」及其所有紀錄？`);
-    if (!confirmed) return;
+    if (!confirm(`確定要刪除 ${name} 及其所有紀錄嗎？`)) return;
     await fetch('/api/delete-target', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ contextId: selectedCid, target_name: name })
     });
+    // 刪除後同步清除 localStorage 快取，避免重整頁面時閃現舊資料
     localStorage.removeItem(`members_${selectedCid}`);
     await loadMembers(selectedCid);
 }
