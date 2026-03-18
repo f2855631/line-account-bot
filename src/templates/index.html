@@ -93,6 +93,12 @@
                     <span id="history-title-name" style="font-weight: 600;">歷史紀錄</span>
                     <select id="month-selector" onchange="fetchHistory()">
                         <option value="">全部</option>
+                        <option value="01">1月</option><option value="02">2月</option>
+                        <option value="03">3月</option><option value="04">4月</option>
+                        <option value="05">5月</option><option value="06">6月</option>
+                        <option value="07">7月</option><option value="08">8月</option>
+                        <option value="09">9月</option><option value="10">10月</option>
+                        <option value="11">11月</option><option value="12">12月</option>
                     </select>
                 </div>
                 <span onclick="closeHistoryDrawer()" style="color: var(--primary-accent); cursor:pointer;">關閉</span>
@@ -108,10 +114,20 @@
     <script src="/static/js/math.js"></script>
     <script src="/static/js/script.js"></script>
     <script>
-        /**
-         * 改良後的初始化函式
-         * 偵測 URL 參數並自動導向歷史頁面
-         */
+        // 在頁面載入的第一瞬間就偵測，不等 LIFF
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('action') === 'history') {
+                // 立刻隱藏成員頁，直接顯示歷史抽屜的殼
+                document.getElementById('page-list').style.display = 'none';
+                document.getElementById('page-input').style.display = 'flex';
+                document.getElementById('history-drawer').classList.add('open');
+                document.getElementById('history-title-name').innerText = '全體歷史紀錄';
+                document.getElementById('history-list-content').innerHTML =
+                    "<p style='text-align:center; padding:20px;'>讀取中...</p>";
+            }
+        })();
+
         async function startApp(liffId) {
             try {
                 await liff.init({ liffId: liffId });
@@ -120,26 +136,19 @@
                     return;
                 }
 
-                // 取得 URL 參數
                 const urlParams = new URLSearchParams(window.location.search);
                 const action = urlParams.get('action');
-                
-                // 執行原本的數據初始化
+
                 await init(liffId);
 
-                // 自動跳轉歷史明細 (簡化呼叫)
                 if (action === 'history') {
-                    console.log("偵測到 action=history，準備切換至歷史明細...");
-                    if (typeof openGlobalHistory === 'function') {
-                        openGlobalHistory();
-                    }
+                    openGlobalHistory();
                 }
             } catch (err) {
                 console.error("LIFF Init Error:", err);
             }
         }
 
-        // 執行啟動
         startApp("{{ LIFF_ID }}");
     </script>
 </body>
