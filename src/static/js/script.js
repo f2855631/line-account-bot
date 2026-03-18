@@ -58,9 +58,6 @@ async function init(liffId) {
             await loadMembers(selectedCid);
         }
 
-        // 動態產生年月選擇器（支援跨年查詢）
-        initMonthSelector();
-
         console.log("✅ LIFF 資料初始化完成");
     } catch (err) { 
         console.error("LIFF Init Error:", err); 
@@ -92,7 +89,10 @@ function renderMemberList(members) {
                 <span class="name-text">${m.target_name}</span>
                 <span class="month-total">本月累積 $${Math.round(m.amount || 0)}</span>
             </div>
-            <button class="del-btn" onclick="doDelete('${m.target_name}', event)">刪除</button>
+            <div style="display:flex; gap:8px;">
+                <button class="edit-btn" onclick="doRename('${m.target_name}', event)">改名</button>
+                <button class="del-btn" onclick="doDelete('${m.target_name}', event)">刪除</button>
+            </div>
         </div>
     `).join('') || "<p style='text-align:center; padding:20px; color:#888;'>尚未建立成員</p>";
 }
@@ -229,43 +229,6 @@ function closeHistoryDrawer() {
     }
 }
 
-// 動態產生年月選擇器
-// 從目前月份往回推 24 個月，讓使用者可以跨年查詢
-function initMonthSelector() {
-    const selector = document.getElementById('month-selector');
-    if (!selector) return;
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-
-    // 清空並重建選項
-    selector.innerHTML = '<option value="">全部</option>';
-
-    for (let i = 0; i < 24; i++) {
-        let y = currentYear;
-        let m = currentMonth - i;
-
-        while (m <= 0) {
-            m += 12;
-            y -= 1;
-        }
-
-        const monthStr = String(m).padStart(2, '0');
-        const value = `${y}-${monthStr}`;
-        const label = `${y}年 ${m}月`;
-
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = label;
-        selector.appendChild(option);
-    }
-
-    // 預設選到當前年月
-    const currentMonthStr = String(currentMonth).padStart(2, '0');
-    selector.value = `${currentYear}-${currentMonthStr}`;
-}
-
 async function fetchHistory() {
     const content = document.getElementById('history-list-content');
     const monthSelector = document.getElementById('month-selector');
@@ -341,47 +304,6 @@ function startEditRecord() {
     document.getElementById('page-list').style.display = 'none';
     document.getElementById('page-input').style.display = 'flex';
     document.getElementById('page-input').classList.add('active');
-}
-
-async function startDeleteRecord() {
-    if (!selectedRecord) return;
-
-    const label = selectedRecord.item_name === "手機即時記帳"
-        ? `$${Math.round(selectedRecord.amount)}`
-        : `${selectedRecord.item_name}（$${Math.round(selectedRecord.amount)}）`;
-
-    if (!confirm(`確定要刪除這筆紀錄嗎？\n\n成員：${selectedRecord.target_name}\n項目：${label}\n日期：${selectedRecord.expense_date}`)) return;
-
-    const btn = document.querySelector('.btn-delete-record');
-    btn.disabled = true;
-    btn.innerText = "刪除中...";
-
-    try {
-        const res = await fetch('/api/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: selectedRecord.id,
-                contextId: selectedCid
-            })
-        });
-        const result = await res.json();
-
-        if (result.success) {
-            selectedRecord = null;
-            document.getElementById('history-actions-bar').style.display = 'none';
-            await fetchHistory();
-            await loadMembers(selectedCid);
-            showToast("紀錄已刪除");
-        } else {
-            showToast("刪除失敗，請稍後再試", true);
-        }
-    } catch (e) {
-        showToast("刪除失敗，請檢查網路狀態", true);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "刪除紀錄";
-    }
 }
 
 // --- Parser 核心邏輯（使用 math.js 取代 Function()，避免任意代碼執行）---
@@ -516,6 +438,31 @@ function showToast(msg, isError = false) {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 400);
     }, 2000);
+}
+
+async function doRename(oldName, event) {
+    event.stopPropagation();
+    const newName = prompt(`請輸入「${oldName}」的新名稱：`, oldName);
+    if (!newName || !newName.trim()) return;
+    if (newName.trim() === oldName) return;
+
+    try {
+        const res = await fetch('/api/rename-target', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contextId: selectedCid, old_name: oldName, new_name: newName.trim() })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            localStorage.removeItem(`members_${selectedCid}`);
+            await loadMembers(selectedCid);
+            showToast(`已將「${oldName}」改名為「${newName.trim()}」`);
+        } else {
+            showToast("改名失敗，請稍後再試", true);
+        }
+    } catch (e) {
+        showToast("改名失敗，請檢查網路狀態", true);
+    }
 }
 
 async function doDelete(name, event) {
