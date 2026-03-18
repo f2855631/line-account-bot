@@ -82,8 +82,7 @@ def get_menu_flex(context_id=None):
             "contents": [{"type": "button", "style": "primary", "color": COLOR_MAIN, "action": {"type": "uri", "label": "開啟管理面板", "uri": liff_url}}]
         }
     }
-    carousel = {"type": "carousel", "contents": [menu_bubble, get_ad_bubble()]}
-    return FlexSendMessage(alt_text="請查看選單", contents=CarouselContainer.new_from_json_dict(carousel))
+    return FlexSendMessage(alt_text="請查看選單", contents=BubbleContainer.new_from_json_dict(menu_bubble))
 
 # --- [關鍵修正區] 歷史總帳函數 ---
 def get_all_debts_flex(debts, context_id=None):
@@ -122,8 +121,7 @@ def get_all_debts_flex(debts, context_id=None):
             ]
         }
     }
-    carousel = {"type": "carousel", "contents": [debt_bubble, get_ad_bubble()]}
-    return FlexSendMessage(alt_text="結算報表", contents=CarouselContainer.new_from_json_dict(carousel))
+    return FlexSendMessage(alt_text="結算報表", contents=BubbleContainer.new_from_json_dict(debt_bubble))
 
 def get_monthly_report_flex(monthly_data, total_sum, context_id=None):
     if not monthly_data: return TextSendMessage(text="本月尚無開銷紀錄")
@@ -150,8 +148,7 @@ def get_monthly_report_flex(monthly_data, total_sum, context_id=None):
             ]
         }
     }
-    carousel = {"type": "carousel", "contents": [report_bubble, get_ad_bubble()]}
-    return FlexSendMessage(alt_text="月報表已送達", contents=CarouselContainer.new_from_json_dict(carousel))
+    return FlexSendMessage(alt_text="月報表已送達", contents=BubbleContainer.new_from_json_dict(report_bubble))
 
 def get_target_selection_flex(targets, context_id=None):
     buttons = []
