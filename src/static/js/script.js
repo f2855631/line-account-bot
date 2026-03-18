@@ -60,16 +60,20 @@ async function init(liffId) {
 async function loadMembers(cid) {
     const container = document.getElementById('nameListContainer');
     const cached = localStorage.getItem(`members_${cid}`);
-    if (cached) renderMemberList(JSON.parse(cached));
+
+    // 歷史模式不渲染成員頁，避免閃爍
+    if (!isHistoryMode) {
+        if (cached) renderMemberList(JSON.parse(cached));
+    }
 
     try {
         const res = await fetch(`/api/get-members?contextId=${cid}&t=${Date.now()}`);
         const data = await res.json();
         const members = data.members || [];
         localStorage.setItem(`members_${cid}`, JSON.stringify(members));
-        renderMemberList(members);
+        if (!isHistoryMode) renderMemberList(members);
     } catch (e) { 
-        if (!cached) container.innerHTML = "讀取失敗，請檢查網路"; 
+        if (!cached && !isHistoryMode) container.innerHTML = "讀取失敗，請檢查網路"; 
     }
 }
 
