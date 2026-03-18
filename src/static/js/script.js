@@ -58,8 +58,6 @@ async function init(liffId) {
             await loadMembers(selectedCid);
         }
 
-        initMonthSelector();
-
         console.log("✅ LIFF 資料初始化完成");
     } catch (err) { 
         console.error("LIFF Init Error:", err); 
@@ -91,7 +89,7 @@ function renderMemberList(members) {
                 <span class="name-text">${m.target_name}</span>
                 <span class="month-total">本月累積 $${Math.round(m.amount || 0)}</span>
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">
                 <button class="edit-btn" onclick="doRename('${m.target_name}', event)">改名</button>
                 <button class="del-btn" onclick="doDelete('${m.target_name}', event)">刪除</button>
             </div>
@@ -127,7 +125,7 @@ function showInputPage(name) {
 // 5. 執行送出 (加入防連點機制)
 async function doSend() {
     let amount = calculateResult();
-    if (amount === 0 && formula !== "0") { showToast("請輸入有效金額", true); return; }
+    if (amount === 0 && formula !== "0") return alert("請輸入有效金額"); 
     
     const submitBtn = document.getElementById('btn-submit-record');
     submitBtn.disabled = true; // 鎖定按鈕防止連點
@@ -155,7 +153,7 @@ async function doSend() {
             const result = await res.json();
             
             if (result.success) {
-                showToast("更新成功");
+                alert("更新成功");
                 hideInputPage();
                 loadMembers(selectedCid);
             }
@@ -178,7 +176,7 @@ async function doSend() {
             }
         }
     } catch (e) { 
-        showToast("送出失敗，請檢查網路狀態", true);
+        alert("送出失敗，請檢查網路狀態"); 
     } finally {
         // 無論成功失敗，最後都要解鎖按鈕
         submitBtn.disabled = false;
@@ -308,72 +306,6 @@ function startEditRecord() {
     document.getElementById('page-input').classList.add('active');
 }
 
-async function startDeleteRecord() {
-    if (!selectedRecord) return;
-
-    const label = selectedRecord.item_name === "手機即時記帳"
-        ? `$${Math.round(selectedRecord.amount)}`
-        : `${selectedRecord.item_name}（$${Math.round(selectedRecord.amount)}）`;
-
-    const confirmed = await showConfirm(`確定要刪除這筆紀錄？\n成員：${selectedRecord.target_name}\n項目：${label}\n日期：${selectedRecord.expense_date}`);
-    if (!confirmed) return;
-
-    const btn = document.querySelector('.btn-delete-record');
-    btn.disabled = true;
-    btn.innerText = "刪除中...";
-
-    try {
-        const res = await fetch('/api/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: selectedRecord.id, contextId: selectedCid })
-        });
-        const result = await res.json();
-
-        if (result.success) {
-            selectedRecord = null;
-            document.getElementById('history-actions-bar').style.display = 'none';
-            await fetchHistory();
-            await loadMembers(selectedCid);
-            showToast("紀錄已刪除");
-        } else {
-            showToast("刪除失敗，請稍後再試", true);
-        }
-    } catch (e) {
-        showToast("刪除失敗，請檢查網路狀態", true);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "刪除紀錄";
-    }
-}
-
-// 動態產生年月選擇器
-function initMonthSelector() {
-    const selector = document.getElementById('month-selector');
-    if (!selector) return;
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-
-    selector.innerHTML = '<option value="">全部</option>';
-
-    for (let i = 0; i < 24; i++) {
-        let y = currentYear;
-        let m = currentMonth - i;
-        while (m <= 0) { m += 12; y -= 1; }
-
-        const monthStr = String(m).padStart(2, '0');
-        const option = document.createElement('option');
-        option.value = `${y}-${monthStr}`;
-        option.textContent = `${y}年 ${m}月`;
-        selector.appendChild(option);
-    }
-
-    const currentMonthStr = String(currentMonth).padStart(2, '0');
-    selector.value = `${currentYear}-${currentMonthStr}`;
-}
-
 // --- Parser 核心邏輯（使用 math.js 取代 Function()，避免任意代碼執行）---
 function calculateResult() {
     if (!formula || formula === "-") return 0;
@@ -476,62 +408,6 @@ async function doCreate() {
     }
 }
 
-// 自製確認對話框（取代 confirm()，避免顯示網址）
-function showConfirm(message) {
-    return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.id = 'custom-dialog-overlay';
-        const lines = message.split('\n').map(l => `<div>${l}</div>`).join('');
-        overlay.innerHTML = `
-            <div id="custom-dialog-box">
-                <div id="custom-dialog-title" style="text-align:left; font-size:15px; line-height:1.8;">${lines}</div>
-                <div id="custom-dialog-btns" style="margin-top:16px;">
-                    <button id="custom-dialog-cancel">取消</button>
-                    <button id="custom-dialog-confirm" style="background:var(--danger-red);">確定</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-        document.getElementById('custom-dialog-confirm').onclick = () => { overlay.remove(); resolve(true); };
-        document.getElementById('custom-dialog-cancel').onclick = () => { overlay.remove(); resolve(false); };
-        overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
-    });
-}
-
-// 自製輸入對話框（取代 prompt()，避免顯示網址）
-function showDialog(title, defaultValue = "") {
-    return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.id = 'custom-dialog-overlay';
-        overlay.innerHTML = `
-            <div id="custom-dialog-box">
-                <div id="custom-dialog-title">${title}</div>
-                <input id="custom-dialog-input" type="text" value="${defaultValue}" />
-                <div id="custom-dialog-btns">
-                    <button id="custom-dialog-cancel">取消</button>
-                    <button id="custom-dialog-confirm">確認</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-
-        const input = document.getElementById('custom-dialog-input');
-        input.focus();
-        input.select();
-
-        document.getElementById('custom-dialog-confirm').onclick = () => {
-            const val = input.value.trim();
-            overlay.remove();
-            resolve(val || null);
-        };
-        document.getElementById('custom-dialog-cancel').onclick = () => { overlay.remove(); resolve(null); };
-        overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(null); } };
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') { const val = input.value.trim(); overlay.remove(); resolve(val || null); }
-        };
-    });
-}
-
 // 輕量提示訊息（取代 alert，不阻塞操作）
 function showToast(msg, isError = false) {
     const existing = document.getElementById('toast-msg');
@@ -564,10 +440,35 @@ function showToast(msg, isError = false) {
     }, 2000);
 }
 
+async function doRename(oldName, event) {
+    event.stopPropagation();
+    event.preventDefault();
+    const newName = await showDialog(`請輸入「${oldName}」的新名稱`, oldName);
+    if (!newName || !newName.trim()) return;
+    if (newName.trim() === oldName) return;
+
+    try {
+        const res = await fetch('/api/rename-target', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contextId: selectedCid, old_name: oldName, new_name: newName.trim() })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            localStorage.removeItem(`members_${selectedCid}`);
+            await loadMembers(selectedCid);
+            showToast(`已將「${oldName}」改名為「${newName.trim()}」`);
+        } else {
+            showToast("改名失敗，請稍後再試", true);
+        }
+    } catch (e) {
+        showToast("改名失敗，請檢查網路狀態", true);
+    }
+}
+
 async function doDelete(name, event) {
     event.stopPropagation();
-    const confirmed = await showConfirm(`確定要刪除「${name}」及其所有紀錄？`);
-    if (!confirmed) return;
+    if (!confirm(`確定要刪除 ${name} 及其所有紀錄嗎？`)) return;
     await fetch('/api/delete-target', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ contextId: selectedCid, target_name: name })
