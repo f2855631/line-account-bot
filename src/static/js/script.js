@@ -453,7 +453,7 @@ function showDialog(title, defaultValue = "") {
         box.appendChild(btnRow);
         overlay.appendChild(box);
         document.body.appendChild(overlay);
-        setTimeout(() => { input.focus(); input.select(); }, 100);
+        setTimeout(() => { input.focus(); }, 100);
         confirmBtn.onclick = () => { const val = input.value.trim(); overlay.remove(); resolve(val || null); };
         cancelBtn.onclick = () => { overlay.remove(); resolve(null); };
         overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(null); } };
