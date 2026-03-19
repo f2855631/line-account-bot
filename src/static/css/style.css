@@ -72,7 +72,7 @@ body {
     flex-shrink: 0; margin-right: 12px;
 }
 
-.name-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.name-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; overflow: hidden; }
 .name-text { font-size: 16px; font-weight: 600; color: var(--text-main); }
 .month-total { font-size: 13px; font-weight: 600; color: var(--primary-accent); }
 

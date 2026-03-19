@@ -19,6 +19,7 @@ function getLocalDateString(date) {
 }
 
 async function init(liffId) {
+    localStorage.clear();
     selectedCid = localStorage.getItem('last_book_id') || "";
     document.getElementById("date-display").innerText = formatFullDate(new Date());
     
