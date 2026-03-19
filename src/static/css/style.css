@@ -76,11 +76,22 @@ body {
 .name-text { font-size: 16px; font-weight: 600; color: var(--text-main); }
 .month-total { font-size: 13px; font-weight: 600; color: var(--primary-accent); }
 
+/* 右側按鈕群組 */
+.card-btn-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* 查帳按鈕 */
+.query-btn {
+    background: white; color: var(--primary-accent);
+    border: 1.5px solid var(--primary-accent);
+    padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    flex-shrink: 0; cursor: pointer;
+}
+
 /* 記帳按鈕 */
 .record-btn {
     background: var(--primary-accent); color: white; border: none;
-    padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
-    flex-shrink: 0;
+    padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    flex-shrink: 0; cursor: pointer;
 }
 
 /* ⋯ 更多按鈕 */
@@ -89,7 +100,7 @@ body {
     border: 1px solid var(--secondary-gray); background: white;
     color: var(--text-light); font-size: 18px; line-height: 1;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; flex-shrink: 0; margin-left: 8px;
+    cursor: pointer; flex-shrink: 0;
 }
 
 /* 展開的操作選單 */

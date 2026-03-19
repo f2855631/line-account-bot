@@ -105,8 +105,11 @@ function renderMemberList(members) {
                     <span class="name-text">${m.target_name}</span>
                     <span class="month-total">本月累積 $${Math.round(m.amount || 0)}</span>
                 </div>
-                <button class="record-btn" onclick="event.stopPropagation(); showInputPage('${m.target_name}')">記帳</button>
-                <button class="more-btn" onclick="event.stopPropagation(); toggleCardActions('${cardId}')">⋯</button>
+                <div class="card-btn-group">
+                    <button class="query-btn" onclick="event.stopPropagation(); openIndividualHistory('${m.target_name}')">查帳</button>
+                    <button class="record-btn" onclick="event.stopPropagation(); showInputPage('${m.target_name}')">記帳</button>
+                    <button class="more-btn" onclick="event.stopPropagation(); toggleCardActions('${cardId}')">⋯</button>
+                </div>
             </div>
             <div class="name-card-actions" id="${cardId}">
                 <button class="action-btn-rename" onclick="doRename('${m.target_name}', event)">改名</button>
@@ -114,6 +117,16 @@ function renderMemberList(members) {
             </div>
         </div>`;
     }).join('') || "<p style='text-align:center; padding:20px; color:#888;'>尚未建立成員</p>";
+}
+
+function openIndividualHistory(targetName) {
+    selectedTarget = targetName;
+    document.getElementById('page-list').style.display = 'none';
+    document.getElementById('page-input').style.display = 'flex';
+    document.getElementById('history-drawer').classList.add('open');
+    document.getElementById('history-title-name').innerText = `${targetName} 的紀錄`;
+    fetchHistory();
+    window.scrollTo(0, 0);
 }
 
 function showInputPage(name) {
