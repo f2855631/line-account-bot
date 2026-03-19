@@ -201,9 +201,8 @@ async function doSend() {
 function openGlobalHistory() {
     selectedTarget = "";
     document.getElementById('page-list').style.display = 'none';
-    document.getElementById('page-input').style.display = 'flex';
+    document.getElementById('page-input').style.display = 'flex'; 
     document.getElementById('history-drawer').classList.add('open');
-    document.getElementById('drawer-overlay').classList.add('active');
     document.getElementById('history-title-name').innerText = "全體歷史紀錄";
     fetchHistory();
 }

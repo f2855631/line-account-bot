@@ -53,74 +53,51 @@
     </div>
 
     <div id="page-input" style="display: none;">
-        <div class="top-nav-bar">
-            <span class="back-btn" onclick="hideInputPage()">取消</span>
+        <div class="top-info">
+            <div class="top-nav">
+                <span class="back-btn" onclick="hideInputPage()">取消</span>
+                <span class="history-btn" onclick="toggleHistory()">歷史明細查詢</span>
+            </div>
             <p id="target-title">正在記帳</p>
-            <span class="history-btn" onclick="toggleHistory()">明細</span>
+            <div id="amount-display">0</div>
+            <input type="text" id="note-input" placeholder="輸入備註內容">
         </div>
 
-        <div class="info-card">
-            <div class="info-card-left">
-                <div class="info-card-label">備註</div>
-                <input type="text" id="note-input" placeholder="點擊分類或自行輸入">
-            </div>
-            <div class="info-card-right">
-                <div id="amount-display">0</div>
-            </div>
-        </div>
-
-        <div class="category-section">
+        <div class="middle-controls">
             <div class="quick-notes">
-                <div class="q-btn" onclick="setNote('早餐')"><span class="q-emoji">🍳</span><span class="q-label">早餐</span></div>
-                <div class="q-btn" onclick="setNote('午餐')"><span class="q-emoji">🍱</span><span class="q-label">午餐</span></div>
-                <div class="q-btn" onclick="setNote('晚餐')"><span class="q-emoji">🍜</span><span class="q-label">晚餐</span></div>
-                <div class="q-btn" onclick="setNote('飲料')"><span class="q-emoji">🧋</span><span class="q-label">飲料</span></div>
-                <div class="q-btn" onclick="setNote('交通')"><span class="q-emoji">🚌</span><span class="q-label">交通</span></div>
-                <div class="q-btn" onclick="setNote('生活用品')"><span class="q-emoji">🛒</span><span class="q-label">生活</span></div>
-                <div class="q-btn" onclick="setNote('房租')"><span class="q-emoji">🏠</span><span class="q-label">房租</span></div>
-                <div class="q-btn" onclick="setNote('娛樂')"><span class="q-emoji">🎮</span><span class="q-label">娛樂</span></div>
-                <div class="q-btn" onclick="setNote('醫療')"><span class="q-emoji">💊</span><span class="q-label">醫療</span></div>
-                <div class="q-btn" onclick="setNote('衣物')"><span class="q-emoji">👔</span><span class="q-label">衣物</span></div>
-                <div class="q-btn" onclick="setNote('教育')"><span class="q-emoji">📚</span><span class="q-label">教育</span></div>
-                <div class="q-btn" onclick="setNote('水電')"><span class="q-emoji">💡</span><span class="q-label">水電</span></div>
+                <div class="q-btn" onclick="setNote('早餐')">早餐</div>
+                <div class="q-btn" onclick="setNote('午餐')">午餐</div>
+                <div class="q-btn" onclick="setNote('晚餐')">晚餐</div>
+                <div class="q-btn" onclick="setNote('飲料')">飲料</div>
+                <div class="q-btn" onclick="setNote('交通')">交通</div>
+                <div class="q-btn" onclick="setNote('生活用品')">生活用品</div>
+                <div class="q-btn" onclick="setNote('房租')">房租</div>
             </div>
-        </div>
-
-        <div class="calendar-strip">
-            <div class="app-date-selector" id="date-picker-trigger" data-wrap="true">
-                <span id="date-display" data-toggle>載入日期...</span>
-                <input type="text" id="date-input" data-input style="display: none;">
+            <div class="calendar-strip">
+                <div class="app-date-selector" id="date-picker-trigger" data-wrap="true">
+                    <span id="date-display" data-toggle>載入日期...</span>
+                    <input type="text" id="date-input" data-input style="display: none;">
+                </div>
             </div>
         </div>
 
         <div class="keypad-container">
             <div class="keypad">
-                <button onclick="press('7')">7</button>
-                <button onclick="press('8')">8</button>
-                <button onclick="press('9')">9</button>
-                <button class="key-clear" onclick="clearFormula()">C</button>
-                <button onclick="press('4')">4</button>
-                <button onclick="press('5')">5</button>
-                <button onclick="press('6')">6</button>
-                <button class="op" onclick="press('/')">÷</button>
-                <button onclick="press('1')">1</button>
-                <button onclick="press('2')">2</button>
-                <button onclick="press('3')">3</button>
-                <button class="op" onclick="press('*')">×</button>
-                <button onclick="press('0')">0</button>
-                <button onclick="press('00')">00</button>
-                <button onclick="press('.')">.</button>
-                <button class="op" onclick="press('-')">−</button>
-                <button class="back-key" onclick="backspace()">⌫</button>
+                <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button><button class="op" onclick="clearFormula()">C</button>
+                <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button><button class="op" onclick="press('/')">÷</button>
+                <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button><button class="op" onclick="press('*')">×</button>
+                <button onclick="press('0')">0</button><button onclick="press('00')">00</button><button onclick="press('.')">.</button><button class="op" onclick="press('-')">−</button>
+                <button class="back-key" onclick="backspace()">🔙</button>
+                <button class="eq-btn" style="grid-column: span 2;" onclick="calculateResult()">＝</button>
                 <button class="op" onclick="press('+')">+</button>
-                <button class="ok-btn" id="btn-ok" style="grid-column: span 2;" onclick="doSend()">OK</button>
             </div>
         </div>
 
-        <div id="drawer-overlay" onclick="closeHistoryDrawer()"></div>
+        <div class="send-area">
+            <button class="btn-confirm" id="btn-submit-record" onclick="doSend()">完成送出</button>
+        </div>
 
         <div id="history-drawer">
-            <div class="drawer-handle"></div>
             <div class="drawer-header">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span id="history-title-name" style="font-weight: 600;">歷史紀錄</span>
@@ -131,7 +108,7 @@
                 <span onclick="closeHistoryDrawer()" style="color: var(--primary-accent); cursor:pointer;">關閉</span>
             </div>
             <div id="history-list-content">載入中...</div>
-
+            
             <div class="history-actions" id="history-actions-bar">
                 <button class="btn-edit-record" onclick="startEditRecord()">編輯紀錄</button>
                 <button class="btn-delete-record" onclick="startDeleteRecord()">刪除紀錄</button>
