@@ -121,19 +121,17 @@ function showInputPage(name) {
     document.getElementById('target-title').innerText = `正在為 ${name} 記帳`;
     document.getElementById('amount-display').innerText = "0";
     document.getElementById('note-input').value = "";
-    
-    const submitBtn = document.getElementById('btn-submit-record');
-    submitBtn.innerText = "完成送出";
-    submitBtn.style.background = "var(--primary-accent)";
-    submitBtn.disabled = false;
-    
+
+    const okBtn = document.getElementById('btn-ok');
+    if (okBtn) { okBtn.innerText = "OK"; okBtn.disabled = false; okBtn.classList.remove('edit-mode'); }
+
     const today = new Date();
     datePicker.setDate(today);
     document.getElementById("date-display").innerText = formatFullDate(today);
-    
+
     document.getElementById('page-list').style.display = 'none';
     const inputPage = document.getElementById('page-input');
-    inputPage.style.display = 'flex'; 
+    inputPage.style.display = 'flex';
     inputPage.classList.add('active');
     window.scrollTo(0, 0);
 }
@@ -141,68 +139,81 @@ function showInputPage(name) {
 async function doSend() {
     let amount = calculateResult();
     if (amount === 0 && formula !== "0") { showToast("請輸入有效金額", true); return; }
-    
-    const submitBtn = document.getElementById('btn-submit-record');
-    submitBtn.disabled = true;
-    submitBtn.innerText = "處理中...";
+
+    const okBtn = document.getElementById('btn-ok');
+    if (okBtn) { okBtn.disabled = true; okBtn.innerText = "⏳"; }
 
     const note = document.getElementById('note-input').value.trim();
     const selectedDate = datePicker.selectedDates[0] || new Date();
-    
+
     try {
         if (currentEditId) {
             const res = await fetch('/api/update', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     id: currentEditId, contextId: selectedCid, amount: amount,
-                    item: note || "手機即時記帳", date: getLocalDateString(selectedDate)
+                    item: note || "一般消費", date: getLocalDateString(selectedDate)
                 })
             });
             const result = await res.json();
             if (result.success) {
-                showToast("更新成功");
-                hideInputPage();
-                loadMembers(selectedCid);
+                currentEditId = null;
+                clearFormula();
+                document.getElementById('note-input').value = "";
+                if (okBtn) { okBtn.classList.remove('edit-mode'); okBtn.innerText = "OK"; }
+                showToast(`✅ 更新成功 $${amount}`);
+                fetchHistory();
+            } else {
+                showToast("更新失敗，請稍後再試", true);
             }
         } else {
-            const y = selectedDate.getFullYear();
-            const m = selectedDate.getMonth() + 1;
-            const d = selectedDate.getDate();
-            const datePrefix = `${y}/${m}/${d}`;
+            let userName = "使用者";
+            try { if (liff.isLoggedIn()) { const p = await liff.getProfile(); userName = p.displayName; } } catch(e) {}
 
-            if (liff.isInClient()) {
-                const triggerText = note 
-                    ? `${datePrefix} ${selectedTarget} ${amount} ${note}` 
-                    : `${datePrefix} ${selectedTarget} ${amount}`;
-                await liff.sendMessages([{ type: 'text', text: triggerText }]);
-                liff.closeWindow(); 
+            const res = await fetch('/api/add', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    target_name: selectedTarget,
+                    amount: amount,
+                    item: note || "一般消費",
+                    contextId: selectedCid,
+                    user_name: userName,
+                    date: getLocalDateString(selectedDate)
+                })
+            });
+            const result = await res.json();
+            if (result.success) {
+                clearFormula();
+                document.getElementById('note-input').value = "";
+                showToast(`✅ 成功記帳 $${amount}`);
+                fetchHistory();
             } else {
-                alert(`[網頁模擬] 發送：\n${datePrefix} ${selectedTarget} ${amount} ${note || ""}`);
-                hideInputPage();
+                showToast("記帳失敗，請稍後再試", true);
             }
         }
-    } catch (e) { 
+    } catch (e) {
         showToast("送出失敗，請檢查網路狀態", true);
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = currentEditId ? "更新紀錄" : "完成送出";
+        if (okBtn) { okBtn.disabled = false; okBtn.innerText = currentEditId ? "更新" : "OK"; }
     }
 }
 
 function openGlobalHistory() {
     selectedTarget = "";
     document.getElementById('page-list').style.display = 'none';
-    document.getElementById('page-input').style.display = 'flex'; 
+    document.getElementById('page-input').style.display = 'flex';
     document.getElementById('history-drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('active');
     document.getElementById('history-title-name').innerText = "全體歷史紀錄";
     fetchHistory();
 }
 
-function toggleHistory() { 
+function toggleHistory() {
     const drawer = document.getElementById('history-drawer');
     const isOpening = !drawer.classList.contains('open');
     if (isOpening) {
         drawer.classList.add('open');
+        document.getElementById('drawer-overlay').classList.add('active');
         document.getElementById('history-title-name').innerText = selectedTarget ? `${selectedTarget} 的紀錄` : "全體歷史紀錄";
         fetchHistory();
     } else {
@@ -212,6 +223,7 @@ function toggleHistory() {
 
 function closeHistoryDrawer() {
     document.getElementById('history-drawer').classList.remove('open');
+    document.getElementById('drawer-overlay').classList.remove('active');
     if (!selectedTarget) {
         setTimeout(async () => {
             document.documentElement.classList.remove('history-mode');
@@ -295,28 +307,27 @@ function selectRecord(el, hJson) {
 function startEditRecord() {
     if (!selectedRecord) return;
     currentEditId = selectedRecord.id;
-    selectedTarget = selectedRecord.target_name; 
+    selectedTarget = selectedRecord.target_name;
     formula = Math.round(selectedRecord.amount).toString();
     renderFormula();
     document.getElementById('target-title').innerText = `正在為 ${selectedTarget} 編輯紀錄`;
-    document.getElementById('note-input').value = (selectedRecord.item_name === "手機即時記帳") ? "" : selectedRecord.item_name;
-    
+    document.getElementById('note-input').value = (selectedRecord.item_name === "手機即時記帳" || selectedRecord.item_name === "一般消費") ? "" : selectedRecord.item_name;
+
     let recordDate = new Date();
     if (selectedRecord.expense_date && selectedRecord.expense_date.includes('-')) {
         const [year, month, day] = selectedRecord.expense_date.split('-').map(Number);
         recordDate = new Date(year, month - 1, day);
     }
-    
-    datePicker.setDate(recordDate, true); 
+
+    datePicker.setDate(recordDate, true);
     document.getElementById("date-display").innerText = formatFullDate(recordDate);
-    
-    const submitBtn = document.getElementById('btn-submit-record');
-    submitBtn.innerText = "更新紀錄";
-    submitBtn.style.background = "var(--primary-yellow)";
-    
-    // 移除 history-mode 避免 CSS 干擾
+
+    const okBtn = document.getElementById('btn-ok');
+    if (okBtn) { okBtn.innerText = "更新"; okBtn.classList.add('edit-mode'); okBtn.disabled = false; }
+
     document.documentElement.classList.remove('history-mode');
     document.getElementById('history-drawer').classList.remove('open');
+    document.getElementById('drawer-overlay').classList.remove('active');
     document.getElementById('page-list').style.display = 'none';
     document.getElementById('page-input').style.display = 'flex';
     document.getElementById('page-input').classList.add('active');
