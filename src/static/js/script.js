@@ -19,7 +19,6 @@ function getLocalDateString(date) {
 }
 
 async function init(liffId) {
-    localStorage.clear();
     selectedCid = localStorage.getItem('last_book_id') || "";
     document.getElementById("date-display").innerText = formatFullDate(new Date());
     
@@ -197,9 +196,10 @@ async function doSend() {
             });
             const result = await res.json();
             if (result.success) {
+                const itemLabel = note ? `・${note}` : "";
                 clearFormula();
                 document.getElementById('note-input').value = "";
-                showToast(`✅ 成功記帳 $${amount}`);
+                showToast(`✅ ${selectedTarget} 記帳 $${amount}${itemLabel}`);
                 fetchHistory();
             } else {
                 showToast("記帳失敗，請稍後再試", true);
