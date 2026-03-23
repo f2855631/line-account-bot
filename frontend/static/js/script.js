@@ -47,7 +47,14 @@ async function init(liffId) {
         isHistoryMode = (action === 'history');
 
         const context = liff.getContext();
-        selectedCid = urlParams.get('bookId') || (context ? (context.groupId || context.userId) : selectedCid);
+        let ctxId = urlParams.get('bookId')
+            || context?.groupId
+            || context?.roomId
+            || context?.utouId;
+        if (!ctxId) {
+            try { const p = await liff.getProfile(); ctxId = p.userId; } catch(e) {}
+        }
+        selectedCid = ctxId || selectedCid;
 
         if (selectedCid) {
             localStorage.setItem('last_book_id', selectedCid);
