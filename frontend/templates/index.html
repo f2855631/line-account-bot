@@ -55,7 +55,7 @@
     <div id="page-input" style="display: none;">
         <div class="top-info">
             <div class="top-nav">
-                <span class="back-btn" onclick="hideInputPage()">取消</span>
+                <span class="back-btn" onclick="hideInputPage()">&#8592; 返回</span>
                 <span class="history-btn" onclick="toggleHistory()">歷史明細查詢</span>
             </div>
             <p id="target-title">正在記帳</p>
@@ -97,6 +97,8 @@
             <button class="btn-confirm" id="btn-submit-record" onclick="doSend()">完成送出</button>
         </div>
 
+        <div id="drawer-overlay" onclick="closeHistoryDrawer()"></div>
+
         <div id="history-drawer">
             <div class="drawer-header">
                 <div style="display:flex; align-items:center; gap:10px;">
@@ -116,11 +118,11 @@
         </div>
     </div>
 
-    <script src="/static/js/math.js?v=4"></script>
-    <script src="/static/js/ui-helpers.js?v=4"></script>
-    <script src="/static/js/members.js?v=4"></script>
-    <script src="/static/js/history.js?v=4"></script>
-    <script src="/static/js/script.js?v=4"></script>
+    <script src="/static/js/math.js?v=6"></script>
+    <script src="/static/js/ui-helpers.js?v=6"></script>
+    <script src="/static/js/members.js?v=6"></script>
+    <script src="/static/js/history.js?v=6"></script>
+    <script src="/static/js/script.js?v=6"></script>
     <script>
         async function startApp(liffId) {
             try {

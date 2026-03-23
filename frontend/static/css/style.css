@@ -131,10 +131,22 @@ body {
 
 .top-info { padding: 30px 20px 10px 20px; background: white; border-bottom: 1px solid var(--secondary-gray); }
 .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.back-btn { font-size: 15px; color: var(--text-light); cursor: pointer; padding: 5px; }
-.history-btn { font-size: 12px; color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 4px 12px; border-radius: 20px; cursor: pointer; }
+.back-btn {
+    font-size: 16px; font-weight: 600; color: var(--text-main);
+    cursor: pointer; padding: 6px 10px; border-radius: 8px;
+    display: flex; align-items: center; gap: 4px;
+}
+.back-btn:active { background: var(--secondary-gray); }
 
-#target-title { font-size: 13px; color: var(--text-light); margin: 0 0 5px 0; }
+.history-btn {
+    font-size: 13px; font-weight: 600;
+    color: white; background: var(--primary-accent);
+    border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(136, 193, 112, 0.4);
+}
+.history-btn:active { opacity: 0.85; }
+
+#target-title { font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 8px 0; }
 #amount-display { 
     font-size: 30px; font-weight: 600; text-align: right; color: var(--text-main); 
     overflow-x: auto; white-space: nowrap; margin-bottom: 8px; min-height: 40px;
@@ -172,6 +184,12 @@ body {
 .btn-confirm { width: 100%; padding: 15px; background: var(--primary-accent); color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; }
 
 /* --- 3. 歷史紀錄抽屜 --- */
+#drawer-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 109;
+}
+#drawer-overlay.active { display: block; }
+
 #history-drawer {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: var(--bg-light); transform: translateY(100%); transition: 0.4s ease-out; z-index: 110; display: flex; flex-direction: column;
