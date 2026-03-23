@@ -7,7 +7,7 @@ from src.settings.config import LIFF_ID
 from src.dependencies import get_db
 
 router = APIRouter()
-templates = Jinja2Templates(directory="src/templates")
+templates = Jinja2Templates(directory="frontend/templates")
 
 
 @router.get("/health")
