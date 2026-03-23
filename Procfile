@@ -1,1 +1,1 @@
-web: gunicorn src.main:app
+web: gunicorn src.main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
