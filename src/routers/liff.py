@@ -20,8 +20,8 @@ async def health_check():
 @router.get("/liff", response_class=HTMLResponse)
 async def index_page(request: Request, bookId: Optional[str] = Query(None)):
     """渲染 LIFF 前端頁面"""
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "LIFF_ID": LIFF_ID,
-        "bookId": bookId
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"LIFF_ID": LIFF_ID, "bookId": bookId}
+    )
