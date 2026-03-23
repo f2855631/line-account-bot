@@ -8,7 +8,7 @@ function showToast(msg, isError = false) {
     const toast = document.createElement('div');
     toast.id = 'toast-msg';
     toast.innerText = msg;
-    toast.style.cssText = `position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:${isError ? '#CC6666' : '#88C170'};color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);opacity:1;transition:opacity 0.4s ease;`;
+    toast.style.cssText = `position:fixed;top:30px;left:50%;transform:translateX(-50%);background:${isError ? '#CC6666' : '#88C170'};color:white;padding:14px 28px;border-radius:24px;font-size:17px;font-weight:700;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,0.25);opacity:1;transition:opacity 0.4s ease;white-space:nowrap;`;
     document.body.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2000);
 }
