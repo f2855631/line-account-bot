@@ -49,9 +49,9 @@ async function init(liffId) {
         const context = liff.getContext();
         let ctxId = urlParams.get('bookId')
             || context?.groupId
-            || context?.roomId
-            || context?.utouId;
+            || context?.roomId;
         if (!ctxId) {
+            // 非群組情境（1 對 1 聊天），改用 profile.userId 確保與 LINE Bot 的 context_id 一致
             try { const p = await liff.getProfile(); ctxId = p.userId; } catch(e) {}
         }
         selectedCid = ctxId || selectedCid;
