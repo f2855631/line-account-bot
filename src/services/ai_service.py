@@ -5,7 +5,11 @@ from src.settings.config import GEMINI_API_KEY
 
 # --- 1. 初始化最新的 Google GenAI Client ---
 # 在 2026 版 SDK 中，我們直接實例化 Client 物件
-client = genai.Client(api_key=GEMINI_API_KEY)
+# 明確指定 v1beta：system_instruction (Developer instruction) 在 v1 不支援
+client = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(api_version="v1beta"),
+)
 
 def get_ai_response(user_msg):
     """

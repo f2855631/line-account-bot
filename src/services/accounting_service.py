@@ -1,9 +1,11 @@
+import asyncio
 import datetime
 from linebot.models import TextSendMessage
 
 from src.dependencies import get_db
 from src.services.ai_service import get_ai_response
 from src.services.parser_service import parse_accounting_content
+from src.services.weather_service import get_weather_reply
 from src import flex_templates as flex
 
 
@@ -37,6 +39,15 @@ async def handle_logic(user_msg, context_id, user_name):
     # --- 查詢目前聊天室的帳本 ID (遷移與除錯用) ---
     if clean_msg in ["帳本ID", "帳本id"]:
         return TextSendMessage(text=context_id)
+
+    # --- 天氣與穿搭建議：「天氣」「天氣 高雄」「今天穿什麼」 ---
+    if clean_msg == "今天穿什麼" or (
+        clean_msg.startswith("天氣") and len(clean_msg) <= 12
+        and not any(ch.isdigit() for ch in clean_msg)
+    ):
+        city = clean_msg[2:].strip() if clean_msg.startswith("天氣") else None
+        text = await asyncio.to_thread(get_weather_reply, city or None)
+        return TextSendMessage(text=text)
 
     # --- A. 選單與功能切換 ---
     if clean_msg in ["選單", "menu", "功能"]:

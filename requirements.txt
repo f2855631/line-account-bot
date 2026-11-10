@@ -7,3 +7,4 @@ python-multipart
 gspread
 google-auth
 gunicorn
+requests
