@@ -28,7 +28,7 @@ LINE 帳號資訊：包含您的內部識別碼 (User ID)、顯示名稱及大�
 
 AI 處理：您的對話文字會傳送至 Google Gemini API 進行語意分析。我們不會將您的 LINE User ID 直接提供給 Google。
 
-技術基礎建設：資料儲存於受保護的雲端資料庫（如 Aiven MySQL），該服務符合國際安全標準。
+技術基礎建設：資料儲存於 Google 試算表（Google Sheets），受 Google 帳號權限保護。
 
 四、 資料安全與保存
 加密傳輸：所有資料傳輸均經過 SSL/TLS 加密保護。

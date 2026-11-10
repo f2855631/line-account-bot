@@ -34,6 +34,10 @@ async def handle_logic(user_msg, context_id, user_name):
             print(f"⚠️ Postback Error: {e}")
             return TextSendMessage(text="指令解析失敗，請稍後再試")
 
+    # --- 查詢目前聊天室的帳本 ID (遷移與除錯用) ---
+    if clean_msg in ["帳本ID", "帳本id"]:
+        return TextSendMessage(text=context_id)
+
     # --- A. 選單與功能切換 ---
     if clean_msg in ["選單", "menu", "功能"]:
         return flex.get_menu_flex(context_id=context_id)

@@ -100,12 +100,5 @@ def handle_postback(event):
 
 @handler.add(LeaveEvent)
 def handle_leave(event):
-    if event.source.type == 'group':
-        context_id = event.source.group_id
-        try:
-            db = get_db()
-            db.db.execute_query(
-                "DELETE FROM groups_list WHERE line_user_id = %s", (context_id,)
-            )
-        except Exception:
-            pass
+    # Bot 被移出群組：保留該群組的記帳資料於 Sheet，不自動刪除
+    pass

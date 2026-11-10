@@ -2,5 +2,6 @@
 .venv/
 __pycache__/
 *.pyc
-src/settings/ca.pem
 *.pem
+.env
+service-account*.json

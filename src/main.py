@@ -12,13 +12,13 @@ from src.routers import liff, records, targets, webhook
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 App starting, connecting to DB...")
+    print("🚀 App starting, connecting to Google Sheets...")
     db = get_db()
     retries = 5
     while retries > 0:
         try:
-            db.db.execute_query("SELECT 1", fetch=True)
-            print("✅ DB Connected & Ready!")
+            await asyncio.to_thread(db.db.load, True)
+            print("✅ Google Sheets Connected & Ready!")
             break
         except Exception as e:
             retries -= 1

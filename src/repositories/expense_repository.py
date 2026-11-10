@@ -1,21 +1,11 @@
 import datetime
 from datetime import timedelta, timezone
-from src.database.mysql_client import db_client
+from src.database.sheets_client import sheets_client
 
 class ExpenseRepository:
     def __init__(self):
-        # 初始化時，內部持有資料庫客戶端實例
-        self.db = db_client
-
-    # ---------------------------------------------------------
-    # 0. 核心底層介面 (補上給 main.py 使用的轉發接口)
-    # ---------------------------------------------------------
-    def execute_query(self, sql, params=None, fetch=False):
-        """
-        轉發接口：讓外部 (如 main.py) 可以直接透過 repository 執行自訂 SQL。
-        身為 QA，這能確保資料庫存取的進入點統一。
-        """
-        return self.db.execute_query(sql, params, fetch)
+        # 初始化時，內部持有 Google Sheets 客戶端實例
+        self.db = sheets_client
 
     # ---------------------------------------------------------
     # 1. 輔助工具函式
@@ -69,68 +59,71 @@ class ExpenseRepository:
     # 2. 帳務紀錄 CRUD
     # ---------------------------------------------------------
     def add_expense(self, line_user_id, target_name, amount, item_name="未分類", user_name="系統", expense_date=None):
-        """新增帳務紀錄 (含自動註冊群組邏輯)"""
-        # 確保群組清單中存在此 ID
-        reg_sql = "INSERT IGNORE INTO defaultdb.groups_list (line_user_id) VALUES (%s)"
-        self.db.execute_query(reg_sql, (line_user_id,))
-        
-        sql = """
-            INSERT INTO defaultdb.expenses (line_user_id, target_name, item_name, amount, user_name, expense_date)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
+        """新增帳務紀錄"""
         final_date = expense_date if expense_date else self._get_taiwan_today()
-        return self.db.execute_query(sql, (line_user_id, target_name, item_name, amount, user_name, final_date))
+        try:
+            self.db.append(line_user_id, target_name, item_name, amount, user_name, final_date)
+            return True
+        except Exception as e:
+            print(f"❌ Sheets 新增失敗: {e}")
+            return False
 
     def update_expense_by_id(self, expense_id, line_user_id, amount, item_name, date):
         """編輯單筆紀錄"""
-        sql = """
-            UPDATE defaultdb.expenses 
-            SET amount = %s, item_name = %s, expense_date = %s 
-            WHERE id = %s AND line_user_id = %s
-        """
-        return self.db.execute_query(sql, (amount, item_name, date, expense_id, line_user_id))
+        try:
+            return self.db.update(expense_id, line_user_id, amount, item_name, date)
+        except Exception as e:
+            print(f"❌ Sheets 更新失敗: {e}")
+            return False
 
     def delete_expense_by_id(self, expense_id, line_user_id):
         """刪除單筆紀錄"""
-        sql = "DELETE FROM defaultdb.expenses WHERE id = %s AND line_user_id = %s"
-        return self.db.execute_query(sql, (expense_id, line_user_id))
+        try:
+            return self.db.delete_where(
+                lambda r: r["id"] == expense_id and r["line_user_id"] == line_user_id) > 0
+        except Exception as e:
+            print(f"❌ Sheets 刪除失敗: {e}")
+            return False
 
     def delete_target_records(self, line_user_id, target_name):
-        """刪除整個對象的紀錄"""
-        sql = "DELETE FROM defaultdb.expenses WHERE line_user_id = %s AND target_name = %s"
-        return self.db.execute_query(sql, (line_user_id, target_name))
+        """刪除整個對象的紀錄 (沒有符合的紀錄時回傳 False)"""
+        try:
+            return self.db.delete_where(
+                lambda r: r["line_user_id"] == line_user_id and r["target_name"] == target_name) > 0
+        except Exception as e:
+            print(f"❌ Sheets 刪除對象失敗: {e}")
+            return False
 
     def rename_target(self, line_user_id, old_name, new_name):
         """重新命名成員：將所有該成員的紀錄 target_name 更新為新名稱"""
-        sql = "UPDATE defaultdb.expenses SET target_name = %s WHERE line_user_id = %s AND target_name = %s"
-        return self.db.execute_query(sql, (new_name, line_user_id, old_name))
+        try:
+            return self.db.update_field_where(line_user_id, old_name, new_name)
+        except Exception as e:
+            print(f"❌ Sheets 改名失敗: {e}")
+            return False
 
     def add_target_member(self, line_user_id, target_name):
         """新增成員 (初始化 0 元紀錄，用於讓該成員出現在清單中)"""
         try:
-            reg_sql = "INSERT IGNORE INTO defaultdb.groups_list (line_user_id) VALUES (%s)"
-            self.db.execute_query(reg_sql, (line_user_id,))
-            today = self._get_taiwan_today()
-            # 建立一筆 0 元紀錄作為初始化指標
-            return self.add_expense(line_user_id, target_name, 0, "初始化成員", "系統", today)
+            return self.add_expense(line_user_id, target_name, 0, "初始化成員", "系統", self._get_taiwan_today())
         except Exception as e:
             print(f"⚠️ Error adding target member: {e}")
             return False
 
     # ---------------------------------------------------------
-    # 3. 查詢與統計 (LIFF 前端 & 機器人共用)
+    # 3. 查詢與統計 (LIFF 前端 & 機器人共用) — 皆讀取記憶體快取，於 Python 內彙總
     # ---------------------------------------------------------
+    def _book(self, line_user_id):
+        """某帳本的所有紀錄"""
+        return [r for r in self.db.records() if r["line_user_id"] == line_user_id]
+
+    @staticmethod
+    def _sorted_desc(rows):
+        return sorted(rows, key=lambda r: (r["expense_date"], r["id"]), reverse=True)
+
     def get_all_records(self, line_user_id):
         """取得該帳本最近 100 筆歷史紀錄"""
-        sql = """
-            SELECT id, expense_date, target_name, item_name, amount, user_name 
-            FROM defaultdb.expenses 
-            WHERE line_user_id = %s 
-            ORDER BY expense_date DESC, id DESC 
-            LIMIT 100
-        """
-        rows = self.db.execute_query(sql, (line_user_id,), fetch=True)
-        return self._format_rows(rows)
+        return self._format_rows(self._sorted_desc(self._book(line_user_id))[:100])
 
     def get_records_by_month(self, line_user_id, month, target_name=None):
         """根據月份篩選紀錄 (含補年份邏輯)"""
@@ -138,90 +131,44 @@ class ExpenseRepository:
         if not clean_month:
             return self.get_all_records(line_user_id)
 
-        sql = """
-            SELECT id, expense_date, target_name, item_name, amount, user_name 
-            FROM defaultdb.expenses 
-            WHERE line_user_id = %s 
-              AND LEFT(expense_date, 7) = %s
-        """
-        params = [line_user_id, clean_month]
-
+        rows = [r for r in self._book(line_user_id) if r["expense_date"][:7] == clean_month]
         if target_name and target_name.strip():
-            sql += " AND target_name = %s "
-            params.append(target_name)
-
-        sql += " ORDER BY expense_date DESC, id DESC"
-        rows = self.db.execute_query(sql, tuple(params), fetch=True)
-        return self._format_rows(rows)
+            rows = [r for r in rows if r["target_name"] == target_name]
+        return self._format_rows(self._sorted_desc(rows))
 
     def get_target_detail(self, line_user_id, target_name, month=None):
         """取得特定對象的詳細紀錄"""
         if month:
             return self.get_records_by_month(line_user_id, month, target_name)
-            
-        sql = """
-            SELECT id, expense_date, target_name, item_name, amount, user_name 
-            FROM defaultdb.expenses 
-            WHERE line_user_id = %s AND target_name = %s
-            ORDER BY expense_date DESC, id DESC
-        """
-        rows = self.db.execute_query(sql, (line_user_id, target_name), fetch=True)
-        return self._format_rows(rows)
+        rows = [r for r in self._book(line_user_id) if r["target_name"] == target_name]
+        return self._format_rows(self._sorted_desc(rows))
+
+    def _sums_by_target(self, rows):
+        sums = {}
+        for r in rows:
+            sums[r["target_name"]] = sums.get(r["target_name"], 0) + r["amount"]
+        return {k: int(v) for k, v in sums.items()}
+
+    def _current_month_rows(self, line_user_id):
+        current_month = self._get_taiwan_today().strftime('%Y-%m')
+        return [r for r in self._book(line_user_id) if r["expense_date"][:7] == current_month]
 
     def get_monthly_sums(self, line_user_id):
-        """取得本月各成員統計 (用於 Flex 報表，排除 0 元紀錄)"""
-        today = self._get_taiwan_today()
-        current_month = today.strftime('%Y-%m')
-        
-        sql = """
-            SELECT target_name, SUM(amount) AS total
-            FROM defaultdb.expenses 
-            WHERE line_user_id = %s 
-            AND LEFT(expense_date, 7) = %s
-            GROUP BY target_name
-            HAVING total > 0
-        """
-        rows = self.db.execute_query(sql, (line_user_id, current_month), fetch=True)
-        if not rows: return {}
-        return {row['target_name']: int(row['total'] or 0) for row in rows}
-    
+        """取得本月各成員統計 (用於 Flex 報表，排除總額 <= 0 的成員)"""
+        sums = self._sums_by_target(self._current_month_rows(line_user_id))
+        return {k: v for k, v in sums.items() if v > 0}
+
     def get_monthly_total_all(self, line_user_id):
         """取得整個帳本在本月的消費總額"""
-        today = self._get_taiwan_today()
-        current_month = today.strftime('%Y-%m')
-        
-        sql = """
-            SELECT SUM(amount) AS grand_total
-            FROM defaultdb.expenses 
-            WHERE line_user_id = %s 
-              AND LEFT(expense_date, 7) = %s
-        """
-        result = self.db.execute_query(sql, (line_user_id, current_month), fetch=True)
-        
-        if result and result[0]['grand_total']:
-            return int(result[0]['grand_total'])
-        return 0
+        return int(sum(r["amount"] for r in self._current_month_rows(line_user_id)))
 
     def get_all_sums(self, line_user_id):
         """取得所有對象的歷史累計金額 (用於「查帳」功能)"""
-        sql = """
-            SELECT target_name, SUM(amount) AS total 
-            FROM defaultdb.expenses 
-            WHERE line_user_id = %s 
-            GROUP BY target_name
-        """
-        rows = self.db.execute_query(sql, (line_user_id,), fetch=True)
-        if not rows: return {}
-        return {row['target_name']: int(row['total'] or 0) for row in rows}
+        return self._sums_by_target(self._book(line_user_id))
 
     def get_recent_targets(self, line_user_id, limit=50):
-        """取得最近有紀錄的人員名單 (用於 LIFF 下拉選單)"""
-        sql = """
-            SELECT target_name FROM defaultdb.expenses 
-            WHERE line_user_id = %s 
-            GROUP BY target_name 
-            ORDER BY MAX(id) DESC 
-            LIMIT %s
-        """
-        rows = self.db.execute_query(sql, (line_user_id, limit), fetch=True)
-        return [row['target_name'] for row in rows] if rows else []
+        """取得最近有紀錄的人員名單 (用於 LIFF 下拉選單)，依最新紀錄 id 由新到舊"""
+        latest = {}
+        for r in self._book(line_user_id):
+            latest[r["target_name"]] = max(latest.get(r["target_name"], 0), r["id"])
+        return sorted(latest, key=latest.get, reverse=True)[:limit]
